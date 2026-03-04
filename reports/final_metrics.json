@@ -1,0 +1,7 @@
+{
+  "accuracy": 0.8536585365853658,
+  "f1": 0.9,
+  "roc_auc": 0.8515479876160991,
+  "optimal_threshold": 0.38,
+  "precision_target": 0.85
+}

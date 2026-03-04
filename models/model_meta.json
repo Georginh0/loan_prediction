@@ -1,0 +1,30 @@
+{
+  "model_name": "Random Forest",
+  "features": [
+    "ApplicantIncome",
+    "CoapplicantIncome",
+    "LoanAmount",
+    "Loan_Amount_Term",
+    "Credit_History",
+    "Gender_Male",
+    "Married_Yes",
+    "Dependents_1",
+    "Dependents_2",
+    "Dependents_3+",
+    "Education_Not Graduate",
+    "Self_Employed_Yes",
+    "Property_Area_Semiurban",
+    "Property_Area_Urban",
+    "TotalIncome",
+    "EMI",
+    "BalanceIncome",
+    "LoanToIncome",
+    "log_ApplicantIncome",
+    "log_CoapplicantIncome",
+    "log_LoanAmount",
+    "log_TotalIncome",
+    "log_BalanceIncome",
+    "log_EMI"
+  ],
+  "optimal_threshold": 0.38
+}

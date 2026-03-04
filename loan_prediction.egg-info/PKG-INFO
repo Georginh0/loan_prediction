@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: loan_prediction
+Version: 0.1.0
+Summary: End-to-end loan approval prediction ML pipeline
+Author: Georginho
+Author-email: George.sam@live.co.uk
+Requires-Python: >=3.8
+License-File: LICENCE

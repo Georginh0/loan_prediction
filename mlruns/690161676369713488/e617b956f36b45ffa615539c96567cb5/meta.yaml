@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/georgensamuel/Documents/Machine_Learning_Projects/loan_prediction/mlruns/690161676369713488/e617b956f36b45ffa615539c96567cb5/artifacts
+end_time: 1772625138849
+entry_point_name: ''
+experiment_id: '690161676369713488'
+lifecycle_stage: active
+run_id: e617b956f36b45ffa615539c96567cb5
+run_name: logistic_regression
+run_uuid: e617b956f36b45ffa615539c96567cb5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1772625136045
+status: 3
+tags: []
+user_id: georgensamuel

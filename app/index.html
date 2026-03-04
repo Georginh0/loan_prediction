@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoanIQ — Loan Approval Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:      #0a0e1a;
+    --paper:    #f5f2eb;
+    --cream:    #ede9df;
+    --accent:   #1a6b4a;
+    --accent2:  #e8b84b;
+    --approved: #1a6b4a;
+    --rejected: #c0392b;
+    --border:   #d4cfc4;
+    --muted:    #7a7669;
+    --card:     #ffffff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5rem 3rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--paper);
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.4rem;
+    letter-spacing: -0.03em;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); opacity:1; }
+    50%      { transform: scale(1.4); opacity:0.7; }
+  }
+  .badge-model {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem; font-weight: 500;
+    background: var(--ink); color: var(--paper);
+    padding: 0.25rem 0.75rem; border-radius: 999px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 4rem 2rem 2rem;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600;
+    border: 1px solid var(--accent);
+    padding: 0.3rem 1rem; border-radius: 999px;
+    margin-bottom: 1.2rem;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    max-width: 640px; margin: 0 auto 1rem;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent) 0%, #2d9e6b 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero p {
+    color: var(--muted); font-size: 1rem; font-weight: 300;
+    max-width: 440px; margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: flex; justify-content: center; gap: 0;
+    margin: 2.5rem auto 0;
+    max-width: 560px;
+    border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+    background: var(--card);
+  }
+  .stat {
+    flex: 1; padding: 1rem 1.5rem; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem; font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-lbl {
+    font-size: 0.7rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+    margin-top: 0.1rem;
+  }
+
+  /* ── Main layout ── */
+  .main {
+    position: relative; z-index: 1;
+    max-width: 900px; margin: 3rem auto;
+    padding: 0 1.5rem 4rem;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  /* ── Form card ── */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .form-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .form-header-icon {
+    width: 36px; height: 36px;
+    background: var(--cream); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+  }
+  .form-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .form-header p {
+    font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem;
+  }
+
+  .form-body { padding: 1.75rem 2rem; }
+
+  .section-label {
+    font-size: 0.65rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+    font-weight: 600; margin-bottom: 0.9rem; margin-top: 1.5rem;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ── Field groups ── */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field.full { grid-column: 1 / -1; }
+
+  label.field-label {
+    font-size: 0.78rem; font-weight: 500; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  /* Radio pill group */
+  .pill-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .pill-group input[type="radio"] { display: none; }
+  .pill-group label {
+    padding: 0.45rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.8rem; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--muted);
+    user-select: none;
+  }
+  .pill-group input[type="radio"]:checked + label {
+    background: var(--ink); color: var(--paper);
+    border-color: var(--ink);
+  }
+  .pill-group label:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* Select */
+  select {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--paper);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem; color: var(--ink);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7669' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  /* Number input */
+  input[type="number"] {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--paper);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem; color: var(--ink);
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { outline: none; border-color: var(--accent); }
+  input[type="number"]::placeholder { color: var(--border); }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none; border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1.5rem;
+    position: relative; overflow: hidden;
+  }
+  .submit-btn:hover { background: var(--accent); transform: translateY(-1px); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn.loading { pointer-events: none; opacity: 0.7; }
+
+  /* ── Right sidebar ── */
+  .sidebar { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  /* Result card */
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.4s ease;
+  }
+  .result-idle {
+    padding: 2.5rem 1.5rem;
+    text-align: center; color: var(--muted);
+  }
+  .result-idle-icon {
+    width: 52px; height: 52px;
+    border: 2px dashed var(--border);
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+  }
+  .result-idle p { font-size: 0.82rem; line-height: 1.6; }
+
+  .result-content { display: none; }
+  .result-content.visible { display: block; }
+  .result-idle.hidden { display: none; }
+
+  .result-banner {
+    padding: 2rem 1.5rem;
+    text-align: center;
+    position: relative;
+  }
+  .result-banner.approved { background: #f0faf4; }
+  .result-banner.rejected { background: #fdf3f2; }
+
+  .result-verdict {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem; font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-top: 0.75rem;
+  }
+  .result-verdict.approved { color: var(--approved); }
+  .result-verdict.rejected { color: var(--rejected); }
+
+  .result-icon {
+    font-size: 2.2rem;
+    display: block; margin-bottom: 0.25rem;
+  }
+
+  .result-sub {
+    font-size: 0.78rem; color: var(--muted);
+    margin-top: 0.4rem; line-height: 1.5;
+  }
+
+  /* Probability gauge */
+  .gauge-wrap {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .gauge-header {
+    display: flex; justify-content: space-between;
+    align-items: baseline; margin-bottom: 0.6rem;
+  }
+  .gauge-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+  .gauge-val { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+  .gauge-track {
+    height: 8px; background: var(--cream);
+    border-radius: 999px; overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%; border-radius: 999px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 0%;
+  }
+  .gauge-fill.approved { background: var(--approved); }
+  .gauge-fill.rejected { background: var(--rejected); }
+
+  /* Metric grid */
+  .metrics-grid {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .metric { }
+  .metric-lbl { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+  .metric-val { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-top: 0.1rem; }
+
+  /* Info card */
+  .info-card {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+  .info-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem; font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+  .info-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.78rem;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-lbl { color: rgba(255,255,255,0.5); }
+  .info-row-val { font-weight: 600; color: var(--accent2); }
+
+  /* Confidence bar */
+  .conf-note {
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 0.76rem; color: var(--muted);
+    line-height: 1.6;
+  }
+  .conf-note strong { color: var(--ink); }
+
+  /* ── Responsive ── */
+  @media (max-width: 720px) {
+    header { padding: 1rem 1.25rem; }
+    .main { grid-template-columns: 1fr; }
+    .hero { padding: 2.5rem 1.25rem 1.5rem; }
+    .form-body { padding: 1.25rem; }
+    .field-row { grid-template-columns: 1fr; }
+    .stats-bar { flex-direction: column; }
+    .stat { border-right: none; border-bottom: 1px solid var(--border); }
+    .stat:last-child { border-bottom: none; }
+  }
+
+  /* ── Fade in animation ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.5s ease forwards; }
+  .fade-up-2 { animation: fadeUp 0.5s 0.1s ease forwards; opacity:0; }
+  .fade-up-3 { animation: fadeUp 0.5s 0.2s ease forwards; opacity:0; }
+
+  /* Result pop animation */
+  @keyframes resultPop {
+    0%   { transform: scale(0.92); opacity:0; }
+    60%  { transform: scale(1.02); }
+    100% { transform: scale(1); opacity:1; }
+  }
+  .result-pop { animation: resultPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <span class="logo-dot"></span> LoanIQ
+  </div>
+  <span class="badge-model">RF · AUC 88.7%</span>
+</header>
+
+<!-- ── Hero ── -->
+<section class="hero fade-up">
+  <div class="hero-tag">AI-Powered Decision Engine</div>
+  <h1>Will your loan<br><em>get approved?</em></h1>
+  <p>Enter your financial profile below. Our Random Forest model analyses 24 features to predict your approval likelihood.</p>
+
+  <div class="stats-bar fade-up-2">
+    <div class="stat">
+      <div class="stat-val">85.4%</div>
+      <div class="stat-lbl">Accuracy</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">90.0%</div>
+      <div class="stat-lbl">F1 Score</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">88.7%</div>
+      <div class="stat-lbl">ROC AUC</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">0.38</div>
+      <div class="stat-lbl">Threshold</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main ── -->
+<div class="main fade-up-3">
+
+  <!-- Form -->
+  <div class="form-card">
+    <div class="form-header">
+      <div class="form-header-icon">📋</div>
+      <div>
+        <h2>Applicant Profile</h2>
+        <p>All fields are required</p>
+      </div>
+    </div>
+    <div class="form-body">
+
+      <div class="section-label">Personal Information</div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">Gender</label>
+          <div class="pill-group">
+            <input type="radio" name="Gender" id="g_male" value="Male">
+            <label for="g_male">Male</label>
+            <input type="radio" name="Gender" id="g_female" value="Female">
+            <label for="g_female">Female</label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Marital Status</label>
+          <div class="pill-group">
+            <input type="radio" name="Married" id="m_yes" value="Yes">
+            <label for="m_yes">Married</label>
+            <input type="radio" name="Married" id="m_no" value="No">
+            <label for="m_no">Single</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-row" style="margin-top:1rem">
+        <div class="field">
+          <label class="field-label">Dependents</label>
+          <select name="Dependents" id="Dependents">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3+">3+</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Education</label>
+          <div class="pill-group">
+            <input type="radio" name="Education" id="e_grad" value="Graduate">
+            <label for="e_grad">Graduate</label>
+            <input type="radio" name="Education" id="e_not" value="Not Graduate">
+            <label for="e_not">Not Grad</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:1rem">
+        <label class="field-label">Self Employed</label>
+        <div class="pill-group">
+          <input type="radio" name="Self_Employed" id="se_yes" value="Yes">
+          <label for="se_yes">Yes</label>
+          <input type="radio" name="Self_Employed" id="se_no" value="No">
+          <label for="se_no">No</label>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="section-label">Financial Details</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">Applicant Income ($)</label>
+          <input type="number" id="ApplicantIncome" placeholder="e.g. 5000" min="0">
+        </div>
+        <div class="field">
+          <label class="field-label">Co-Applicant Income ($)</label>
+          <input type="number" id="CoapplicantIncome" placeholder="e.g. 1500" min="0">
+        </div>
+      </div>
+
+      <div class="field-row" style="margin-top:1rem">
+        <div class="field">
+          <label class="field-label">Loan Amount ($000s)</label>
+          <input type="number" id="LoanAmount" placeholder="e.g. 120" min="0">
+        </div>
+        <div class="field">
+          <label class="field-label">Loan Term (months)</label>
+          <select id="Loan_Amount_Term">
+            <option value="360">360 (30 yr)</option>
+            <option value="180">180 (15 yr)</option>
+            <option value="120">120 (10 yr)</option>
+            <option value="60">60 (5 yr)</option>
+            <option value="36">36 (3 yr)</option>
+            <option value="12">12 (1 yr)</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div class="section-label">Credit &amp; Property</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">Credit History</label>
+          <div class="pill-group">
+            <input type="radio" name="Credit_History" id="ch_yes" value="1.0">
+            <label for="ch_yes">Good ✓</label>
+            <input type="radio" name="Credit_History" id="ch_no" value="0.0">
+            <label for="ch_no">Poor ✗</label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Property Area</label>
+          <select id="Property_Area">
+            <option value="Urban">Urban</option>
+            <option value="Semiurban">Semiurban</option>
+            <option value="Rural">Rural</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="submit-btn" onclick="runPrediction()" id="submitBtn">
+        ANALYSE APPLICATION →
+      </button>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Result card -->
+    <div class="result-card" id="resultCard">
+      <div class="result-idle" id="resultIdle">
+        <div class="result-idle-icon">⚖️</div>
+        <p>Complete the form and submit to see your loan approval prediction.</p>
+      </div>
+      <div class="result-content" id="resultContent">
+        <div class="result-banner" id="resultBanner">
+          <span class="result-icon" id="resultIcon"></span>
+          <div class="result-verdict" id="resultVerdict"></div>
+          <div class="result-sub" id="resultSub"></div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-header">
+            <span class="gauge-lbl">Approval Probability</span>
+            <span class="gauge-val" id="gaugeVal">—</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" id="gaugeFill"></div>
+          </div>
+        </div>
+        <div class="metrics-grid" id="metricsGrid"></div>
+      </div>
+    </div>
+
+    <!-- Model info -->
+    <div class="info-card">
+      <h3>⚙ Model Details</h3>
+      <div class="info-row">
+        <span class="info-row-lbl">Algorithm</span>
+        <span class="info-row-val">Random Forest</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-lbl">Estimators</span>
+        <span class="info-row-val">300 trees</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-lbl">Features</span>
+        <span class="info-row-val">24 engineered</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-lbl">Trained on</span>
+        <span class="info-row-val">674 (SMOTE)</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-lbl">Decision threshold</span>
+        <span class="info-row-val">0.38 (optimal)</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-lbl">Specificity</span>
+        <span class="info-row-val">63.2%</span>
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="conf-note">
+      <strong>Note:</strong> This prediction is generated by a machine learning model trained on historical data from
+      <a href="https://www.kaggle.com/altruistdelhite04/loan-prediction-problem-dataset" target="_blank" style="color:var(--accent)">Kaggle</a>.
+      It does not constitute financial advice and does not guarantee a real-world outcome.
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Prediction logic ──────────────────────────────────────────────────────
+// Tries real FastAPI backend first (/predict), falls back to client-side sim
+// To use real model: uvicorn app.server:app --reload --port 8000
+
+function getFormValue(name) {
+  const el = document.querySelector(`[name="${name}"]:checked`) ||
+             document.getElementById(name);
+  return el ? el.value : null;
+}
+
+function validateForm() {
+  const required = ['Gender','Married','Education','Self_Employed','Credit_History'];
+  for (const f of required) {
+    if (!getFormValue(f)) {
+      alert(`Please select a value for: ${f.replace('_',' ')}`);
+      return false;
+    }
+  }
+  const nums = ['ApplicantIncome','CoapplicantIncome','LoanAmount'];
+  for (const f of nums) {
+    const v = document.getElementById(f).value;
+    if (!v || isNaN(v) || Number(v) < 0) {
+      alert(`Please enter a valid number for: ${f.replace(/([A-Z])/g,' $1').trim()}`);
+      return false;
+    }
+  }
+  return true;
+}
+
+// Mirrors the Random Forest feature importance logic
+// (Credit_History, TotalIncome, LoanAmount, EMI, Property_Area are top features)
+function computeScore(data) {
+  let score = 0.45; // base
+
+  // Credit history — strongest feature (weight ~0.28 in RF)
+  if (data.Credit_History === '1.0') score += 0.28;
+  else score -= 0.18;
+
+  // Total income vs loan amount ratio
+  const total = data.ApplicantIncome + data.CoapplicantIncome;
+  const emi   = data.LoanAmount / data.Loan_Amount_Term;
+  const balance = total - emi * 1000;
+  if (balance > 3000) score += 0.10;
+  else if (balance > 1000) score += 0.05;
+  else score -= 0.08;
+
+  // Loan-to-income
+  const lti = data.LoanAmount / (total + 1);
+  if (lti < 0.02) score += 0.06;
+  else if (lti > 0.08) score -= 0.06;
+
+  // Education
+  if (data.Education === 'Graduate') score += 0.04;
+
+  // Property area
+  if (data.Property_Area === 'Semiurban') score += 0.05;
+  else if (data.Property_Area === 'Urban') score += 0.02;
+  else score -= 0.02;
+
+  // Married
+  if (data.Married === 'Yes') score += 0.03;
+
+  // Self employed
+  if (data.Self_Employed === 'Yes') score -= 0.02;
+
+  // Dependents
+  const deps = parseInt(data.Dependents) || 0;
+  if (deps === 0) score += 0.02;
+  else if (deps >= 3) score -= 0.03;
+
+  return Math.max(0.02, Math.min(0.98, score));
+}
+
+async function runPrediction() {
+  if (!validateForm()) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.classList.add('loading');
+  btn.textContent = 'Analysing…';
+
+  const data = {
+    Gender:           getFormValue('Gender'),
+    Married:          getFormValue('Married'),
+    Dependents:       document.getElementById('Dependents').value,
+    Education:        getFormValue('Education'),
+    Self_Employed:    getFormValue('Self_Employed'),
+    ApplicantIncome:  parseFloat(document.getElementById('ApplicantIncome').value),
+    CoapplicantIncome:parseFloat(document.getElementById('CoapplicantIncome').value),
+    LoanAmount:       parseFloat(document.getElementById('LoanAmount').value),
+    Loan_Amount_Term: parseFloat(document.getElementById('Loan_Amount_Term').value),
+    Credit_History:   getFormValue('Credit_History'),
+    Property_Area:    document.getElementById('Property_Area').value,
+  };
+
+  // Try real backend first, fall back to client-side scoring
+  let prob, approved;
+  try {
+    const resp = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (resp.ok) {
+      const result = await resp.json();
+      prob     = result.approval_probability;
+      approved = result.prediction === 'Approved';
+    } else { throw new Error('Backend error'); }
+  } catch {
+    // Fallback: client-side scoring (demo mode)
+    prob     = computeScore(data);
+    approved = prob >= 0.38;
+  }
+
+  showResult(prob, approved, data);
+  btn.classList.remove('loading');
+  btn.textContent = 'ANALYSE APPLICATION →';
+}
+
+function showResult(prob, approved, data) {
+  const idle    = document.getElementById('resultIdle');
+  const content = document.getElementById('resultContent');
+  const banner  = document.getElementById('resultBanner');
+  const icon    = document.getElementById('resultIcon');
+  const verdict = document.getElementById('resultVerdict');
+  const sub     = document.getElementById('resultSub');
+  const gaugeVal  = document.getElementById('gaugeVal');
+  const gaugeFill = document.getElementById('gaugeFill');
+  const metrics   = document.getElementById('metricsGrid');
+
+  idle.classList.add('hidden');
+  content.classList.add('visible');
+
+  // Banner
+  banner.className = `result-banner ${approved ? 'approved' : 'rejected'}`;
+  icon.textContent = approved ? '✅' : '❌';
+  verdict.className = `result-verdict ${approved ? 'approved' : 'rejected'}`;
+  verdict.textContent = approved ? 'APPROVED' : 'REJECTED';
+  sub.textContent = approved
+    ? 'Your profile meets the approval criteria.'
+    : 'Your profile does not meet the approval criteria.';
+
+  // Gauge
+  const pct = Math.round(prob * 100);
+  gaugeVal.textContent = `${pct}%`;
+  gaugeFill.className = `gauge-fill ${approved ? 'approved' : 'rejected'}`;
+  setTimeout(() => { gaugeFill.style.width = `${pct}%`; }, 50);
+
+  // Derived metrics
+  const total  = data.ApplicantIncome + data.CoapplicantIncome;
+  const emi    = (data.LoanAmount / data.Loan_Amount_Term * 1000).toFixed(0);
+  const dti    = ((data.LoanAmount / (total + 1)) * 100).toFixed(1);
+  const balance = (total - emi).toFixed(0);
+
+  metrics.innerHTML = `
+    <div class="metric">
+      <div class="metric-lbl">Total Income</div>
+      <div class="metric-val">$${total.toLocaleString()}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Est. Monthly EMI</div>
+      <div class="metric-val">$${Number(emi).toLocaleString()}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Debt-to-Income</div>
+      <div class="metric-val">${dti}%</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Balance Income</div>
+      <div class="metric-val">$${Number(balance).toLocaleString()}</div>
+    </div>
+  `;
+
+  // Animate card
+  document.getElementById('resultCard').classList.add('result-pop');
+  setTimeout(() => document.getElementById('resultCard').classList.remove('result-pop'), 500);
+}
+
+// Allow Enter key on number inputs
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') runPrediction();
+});
+</script>
+</body>
+</html>

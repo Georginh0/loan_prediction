@@ -1,0 +1,7 @@
+,CV Accuracy (mean),CV Accuracy (std),CV F1 (mean),CV AUC (mean)
+Random Forest,0.8131,0.0341,0.8173,0.8903
+Gradient Boosting,0.8012,0.0336,0.8114,0.862
+SVM,0.736,0.0218,0.6866,0.853
+AdaBoost,0.7597,0.0216,0.766,0.8352
+Logistic Regression,0.6959,0.0198,0.7265,0.7766
+KNN,,,,

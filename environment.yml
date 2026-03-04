@@ -1,0 +1,59 @@
+# Conda Environment Setup Instructions
+#  - Using an environment.yml file with conda
+#  - Key Terminal Commands:
+#
+#    conda env create -f environment.yml
+#    conda env update --file environment.yml --prune
+#    conda env export --name loan_prediction > environment.yml
+#    conda env remove --name loan_prediction
+#    conda env list
+
+name: loan_prediction
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8.15
+  - pip
+  - bottleneck
+ # config.yaml
+project:
+  name: "loan-prediction"
+  version: "1.0.0"
+
+data:
+  raw_path: "/data/raw/train.csv"
+  processed_path: "data/processed/"
+  target_column: "Loan_Status"
+  test_size: 0.2
+  random_state: 42
+
+preprocessing:
+  impute_strategy_num: "median"
+  impute_strategy_cat: "most_frequent"
+  scale_method: "standard"
+  feature_engineering:
+    - total_income
+    - loan_to_income_ratio
+
+model:
+  default: "RandomForest"
+  cv_folds: 5
+  scoring: "roc_auc"
+  hyperparameter_tuning: true
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "loan_prediction"
+  model_registry: true
+
+zenml:
+  stack: "default"
+  orchestrator: "local"
+  artifact_store: "local"
+
+deployment:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
